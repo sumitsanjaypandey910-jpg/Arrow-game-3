@@ -1,0 +1,8 @@
+{
+  "name": "Arrows Direction",
+  "description": "An authentic brain training game to train concentration and visual processing speed.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
