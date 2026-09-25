@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Flame, Pause, Play, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
+import { Flame, Pause, Play, Zap } from 'lucide-react';
 import { Direction, Stimulus, GameResult, LevelConfig } from '../types/game';
 import { generateStimulus, calculatePoints } from '../utils/gameLogic';
 import { sound } from '../utils/sound';
 import { ArrowDisplay } from './ArrowDisplay';
+import { ThreeDControls } from './ThreeDControls';
 
 interface GameplayArenaProps {
   config: LevelConfig;
@@ -42,6 +43,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
   // Stimulus & Timers
   const [stimulus, setStimulus] = useState<Stimulus>(() => generateStimulus(config.level));
   const stimulusStartTimeRef = useRef<number>(performance.now());
+  const pauseStartTimeRef = useRef<number | null>(null);
   const [animState, setAnimState] = useState<{ direction: Direction; isCorrect: boolean } | null>(null);
   const [floatingBonus, setFloatingBonus] = useState<{ id: number; text: string; isError?: boolean } | null>(null);
 
@@ -61,6 +63,26 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
     urgentTickPlayedRef.current = false;
     timeoutHandledRef.current = false;
   }, [maxQuestionTimeMs]);
+
+  // Handle Pause / Resume without penalizing reaction time
+  const handleTogglePause = () => {
+    sound.playTap();
+    setIsPaused((prev) => {
+      const next = !prev;
+      if (next) {
+        // Pausing: record timestamp
+        pauseStartTimeRef.current = performance.now();
+      } else {
+        // Resuming: adjust stimulusStartTime by paused duration
+        if (pauseStartTimeRef.current !== null) {
+          const pausedDuration = performance.now() - pauseStartTimeRef.current;
+          stimulusStartTimeRef.current += pausedDuration;
+          pauseStartTimeRef.current = null;
+        }
+      }
+      return next;
+    });
+  };
 
   // Countdown timer effect
   useEffect(() => {
@@ -82,7 +104,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
     }
   }, [countdown, resetQuestionTimer]);
 
-  // Per-stimulus urgency timer countdown interval (generates urge to answer quickly!)
+  // Per-stimulus urgency timer countdown interval
   useEffect(() => {
     if (countdown !== null || isPaused || !timerEnabled || timeLeft <= 0) {
       return;
@@ -211,7 +233,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
     onGameOver,
   ]);
 
-  // Handle player answer (via swipe, keyboard, or button)
+  // Handle player answer (via 3D controls, swipe, or keyboard)
   const handleAnswer = useCallback(
     (inputDirection: Direction) => {
       if (
@@ -223,7 +245,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
       )
         return;
 
-      const reactionMs = Math.round(performance.now() - stimulusStartTimeRef.current);
+      const reactionMs = Math.max(1, Math.round(performance.now() - stimulusStartTimeRef.current));
       const isCorrect = inputDirection === stimulus.correctResponse;
 
       isInputLockedRef.current = true;
@@ -304,7 +326,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
         e.preventDefault();
         handleAnswer(dir);
       } else if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
-        setIsPaused((p) => !p);
+        handleTogglePause();
       }
     };
 
@@ -312,7 +334,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [countdown, isPaused, handleAnswer]);
 
-  // Touch & Pointer Gesture Listeners
+  // Touch & Pointer Gesture Listeners on the playfield
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (countdown !== null || isPaused) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -332,14 +354,12 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
     const dy = clientY - touchStartRef.current.y;
     const absX = Math.abs(dx);
     const absY = Math.abs(dy);
-    const minSwipeDist = 26;
+    const minSwipeDist = 28;
 
     if (Math.max(absX, absY) > minSwipeDist) {
       if (absX > absY) {
-        // Horizontal swipe
         handleAnswer(dx > 0 ? 'RIGHT' : 'LEFT');
       } else {
-        // Vertical swipe
         handleAnswer(dy > 0 ? 'DOWN' : 'UP');
       }
     }
@@ -363,16 +383,16 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
       onMouseUp={handleTouchEnd}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="relative w-full h-full flex flex-col justify-between py-2 sm:py-3 px-4 select-none touch-none overflow-hidden max-w-md mx-auto"
+      className="relative w-full h-full flex flex-col justify-between py-2 sm:py-3 px-3 sm:px-4 select-none touch-none overflow-hidden max-w-lg mx-auto"
     >
       {/* Top HUD: Exit, Score, Urgency Mode Indicator, Global Timer */}
-      <div className="w-full flex items-center justify-between gap-2 pt-2 pb-2.5 border-b border-white/10 z-20">
+      <div className="w-full flex items-center justify-between gap-2 pt-1 pb-2 border-b border-white/10 z-20">
         <button
           onClick={() => {
             sound.playTap();
             onExit();
           }}
-          className="text-xs font-semibold text-indigo-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 transition active:scale-95 cursor-pointer"
+          className="text-xs font-bold text-indigo-200 hover:text-white px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 transition active:scale-95 cursor-pointer shadow-sm"
         >
           Exit
         </button>
@@ -384,19 +404,19 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
             setTimerEnabled((t) => !t);
           }}
           title={timerEnabled ? 'Response limit active' : 'Response limit paused'}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer active:scale-95 ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer active:scale-95 ${
             timerEnabled
-              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40 shadow-sm shadow-cyan-500/20'
-              : 'bg-white/5 text-white/50 border-white/10'
+              ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+              : 'bg-white/10 text-white/50 border-white/10'
           }`}
         >
-          <Zap className={`w-3 h-3 ${timerEnabled ? 'text-amber-300 fill-amber-300' : 'text-white/40'}`} />
-          <span>{timerEnabled ? 'Urge Gauge ON' : 'Gauge OFF'}</span>
+          <Zap className={`w-3.5 h-3.5 ${timerEnabled ? 'text-amber-300 fill-amber-300' : 'text-white/40'}`} />
+          <span>{timerEnabled ? 'Speed Gauge ON' : 'Gauge OFF'}</span>
         </button>
 
         {/* Running Score */}
         <div className="flex flex-col items-center">
-          <span className="text-[9px] font-bold text-indigo-300 uppercase tracking-widest leading-none mb-0.5">
+          <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest leading-none mb-0.5">
             Score
           </span>
           <div className="relative">
@@ -408,7 +428,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
             {floatingBonus && (
               <span
                 key={floatingBonus.id}
-                className={`absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-bold pointer-events-none animate-out fade-out slide-out-to-top duration-700 ${
+                className={`absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-black pointer-events-none animate-out fade-out slide-out-to-top duration-700 ${
                   floatingBonus.isError ? 'text-rose-400 font-extrabold' : 'text-cyan-300'
                 }`}
               >
@@ -421,7 +441,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
         {/* Global Round Timer readout */}
         <div className="flex items-center gap-2">
           <div className="flex flex-col items-end">
-            <span className="text-[9px] font-bold text-indigo-300 uppercase tracking-widest leading-none mb-0.5">
+            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest leading-none mb-0.5">
               Round
             </span>
             <span
@@ -434,38 +454,35 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
           </div>
 
           <button
-            onClick={() => {
-              sound.playTap();
-              setIsPaused((p) => !p);
-            }}
+            onClick={handleTogglePause}
             aria-label="Pause game"
-            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-white cursor-pointer active:scale-95 transition"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white cursor-pointer transition border border-white/10 shadow-sm"
           >
-            {isPaused ? <Play className="w-3.5 h-3.5 fill-white" /> : <Pause className="w-3.5 h-3.5" />}
+            {isPaused ? <Play className="w-4 h-4 fill-white" /> : <Pause className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
       {/* Progress Bar under HUD for 50-second round */}
-      <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-1.5">
+      <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden mt-1.5 p-0.5 border border-white/10 shadow-inner">
         <div
           style={{ width: `${timerPercent}%` }}
-          className={`h-full transition-all duration-1000 ${
-            isTimeCritical ? 'bg-rose-500' : 'bg-gradient-to-r from-teal-400 to-cyan-400'
+          className={`h-full rounded-full transition-all duration-1000 ${
+            isTimeCritical ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : 'bg-gradient-to-r from-teal-400 via-cyan-400 to-sky-400 shadow-[0_0_8px_#22d3ee]'
           }`}
         />
       </div>
 
       {/* Streak and Level Indicator */}
-      <div className="flex items-center justify-between text-xs px-2 mt-1.5">
+      <div className="flex items-center justify-between text-xs px-2 mt-1.5 mb-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-indigo-300/80 font-medium">Level {config.level}:</span>
+          <span className="text-indigo-300 font-medium">Level {config.level}:</span>
           <span className="text-white font-bold">{config.title}</span>
         </div>
 
         {streak >= 2 && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs shadow-sm animate-pulse">
-            <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-400/50 text-amber-300 font-bold text-xs shadow-md animate-pulse">
+            <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
             <span>
               {streak} streak ({streak >= 10 ? '2.5x' : streak >= 6 ? '2.0x' : '1.5x'})
             </span>
@@ -473,8 +490,8 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
         )}
       </div>
 
-      {/* Center Interactive Stimulus Area with Dynamic Urgency Gauge */}
-      <div className="flex-1 flex flex-col items-center justify-center relative my-1">
+      {/* Center Interactive Stimulus Area - Generously Proportioned to eliminate blank space */}
+      <div className="flex-1 flex flex-col items-center justify-center relative my-1 sm:my-2 w-full">
         <ArrowDisplay
           stimulus={stimulus}
           animationState={animState}
@@ -486,61 +503,24 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
         />
       </div>
 
-      {/* Bottom Directional Controls (Touch D-Pad or Taps) */}
-      <div className="w-full max-w-xs mx-auto pb-1 z-20">
-        <div className="text-center text-[10px] text-indigo-300/70 font-medium mb-1.5">
-          Swipe screen or tap directional pad
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 place-items-center">
-          {/* Row 1: UP */}
-          <div />
-          <button
-            onClick={() => handleAnswer('UP')}
-            aria-label="Swipe Up"
-            className="w-14 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-90 active:bg-cyan-500/30 border border-white/15 flex items-center justify-center text-white transition cursor-pointer shadow-md"
-          >
-            <ChevronUp className="w-6 h-6" strokeWidth={3} />
-          </button>
-          <div />
-
-          {/* Row 2: LEFT, DOWN, RIGHT */}
-          <button
-            onClick={() => handleAnswer('LEFT')}
-            aria-label="Swipe Left"
-            className="w-14 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-90 active:bg-cyan-500/30 border border-white/15 flex items-center justify-center text-white transition cursor-pointer shadow-md"
-          >
-            <ChevronLeft className="w-6 h-6" strokeWidth={3} />
-          </button>
-
-          <button
-            onClick={() => handleAnswer('DOWN')}
-            aria-label="Swipe Down"
-            className="w-14 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-90 active:bg-cyan-500/30 border border-white/15 flex items-center justify-center text-white transition cursor-pointer shadow-md"
-          >
-            <ChevronDown className="w-6 h-6" strokeWidth={3} />
-          </button>
-
-          <button
-            onClick={() => handleAnswer('RIGHT')}
-            aria-label="Swipe Right"
-            className="w-14 h-11 rounded-xl bg-white/10 hover:bg-white/20 active:scale-90 active:bg-cyan-500/30 border border-white/15 flex items-center justify-center text-white transition cursor-pointer shadow-md"
-          >
-            <ChevronRight className="w-6 h-6" strokeWidth={3} />
-          </button>
-        </div>
+      {/* Bottom 3D Directional Controls (Arcade Tactile Keypad) */}
+      <div className="w-full pb-1 z-20">
+        <ThreeDControls
+          onInput={handleAnswer}
+          disabled={isInputLockedRef.current || isTimedOut}
+        />
       </div>
 
       {/* 3, 2, 1 Countdown Overlay */}
       {countdown !== null && (
-        <div className="absolute inset-0 z-50 bg-[#160e33]/90 backdrop-blur-md flex flex-col items-center justify-center text-center">
-          <div className="text-indigo-300 text-sm font-bold uppercase tracking-widest mb-3">
+        <div className="absolute inset-0 z-50 bg-[#140b2e]/95 backdrop-blur-md flex flex-col items-center justify-center text-center p-4">
+          <div className="text-cyan-300 text-sm sm:text-base font-extrabold uppercase tracking-widest mb-3">
             Get Ready
           </div>
-          <div className="text-8xl sm:text-9xl font-black font-display text-white tracking-tighter animate-ping [animation-duration:0.8s]">
+          <div className="text-8xl sm:text-9xl font-black font-display text-white tracking-tighter animate-ping [animation-duration:0.8s] drop-shadow-[0_10px_30px_rgba(34,211,238,0.5)]">
             {countdown === 0 ? 'GO!' : countdown}
           </div>
-          <div className="mt-8 text-xs text-indigo-200/70 max-w-xs px-4">
+          <div className="mt-8 text-xs sm:text-sm text-indigo-200/80 max-w-xs px-4 font-medium">
             {config.description}
           </div>
         </div>
@@ -548,19 +528,19 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
 
       {/* Pause Screen Overlay */}
       {isPaused && (
-        <div className="absolute inset-0 z-40 bg-[#160e33]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-          <h3 className="text-2xl font-bold text-white mb-2">Game Paused</h3>
-          <p className="text-sm text-indigo-200/80 mb-6">Take a breath and resume when ready.</p>
-          <div className="space-y-3 w-48">
+        <div className="absolute inset-0 z-40 bg-[#140b2e]/95 backdrop-blur-lg flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-150">
+          <h3 className="text-3xl font-black text-white mb-2">Game Paused</h3>
+          <p className="text-sm text-indigo-200/80 mb-6 max-w-xs">Take a breath! Your timer is paused and will resume smoothly.</p>
+          <div className="space-y-3 w-52">
             <button
-              onClick={() => setIsPaused(false)}
-              className="w-full py-3 rounded-full bg-cyan-400 hover:bg-cyan-300 text-[#160e33] font-bold text-sm transition active:scale-95 cursor-pointer"
+              onClick={handleTogglePause}
+              className="w-full py-3.5 rounded-full bg-gradient-to-r from-cyan-400 to-sky-400 hover:from-cyan-300 hover:to-sky-300 text-[#140b2e] font-black text-base transition active:scale-95 shadow-[0_8px_20px_rgba(6,182,212,0.4)] cursor-pointer"
             >
               Resume
             </button>
             <button
               onClick={onExit}
-              className="w-full py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition cursor-pointer"
+              className="w-full py-3 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold text-sm transition active:scale-95 border border-white/10 cursor-pointer"
             >
               Quit to Menu
             </button>

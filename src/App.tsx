@@ -53,8 +53,8 @@ export default function App() {
       {/* Outer Glow on Desktop */}
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.12)_0%,transparent_70%)]" />
 
-      {/* Mobile Device Enclosure Frame */}
-      <div className="relative w-full h-[100dvh] sm:h-[844px] sm:max-w-[390px] sm:rounded-[44px] bg-[#1a113d] sm:border-[6px] sm:border-[#2e2365] sm:shadow-[0_25px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(79,70,229,0.15)] flex flex-col overflow-hidden">
+      {/* Mobile Device Enclosure Frame - Spacious, filling viewport without blank space */}
+      <div className="relative w-full h-[100dvh] sm:h-[94dvh] sm:max-h-[920px] sm:max-w-[460px] sm:rounded-[44px] bg-[#1a113d] sm:border-[6px] sm:border-[#2e2365] sm:shadow-[0_25px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(79,70,229,0.2)] flex flex-col overflow-hidden">
         {/* Dynamic Island / Speaker Notch on Desktop Mockup */}
         <div className="hidden sm:flex absolute top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-40 items-center justify-between px-3 pointer-events-none">
           <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
@@ -64,7 +64,7 @@ export default function App() {
 
         {/* View Mode Switching */}
         {view === 'PLAYING' ? (
-          <div className="relative w-full h-full flex flex-col pt-2 sm:pt-6">
+          <div className="relative w-full h-full flex flex-col pt-1 sm:pt-4">
             <GameplayArena
               config={currentConfig}
               onExit={() => setView('MENU')}
@@ -97,10 +97,10 @@ export default function App() {
             )}
           </div>
         ) : (
-          /* MENU VIEW (Exact Replica of Provided Screenshot) */
-          <div className="relative w-full h-full flex flex-col justify-between overflow-y-auto overflow-x-hidden pt-2 sm:pt-6 pb-6 px-5 sm:px-6">
+          /* MENU VIEW (Exact Replica of Provided Screenshot, with large 3D symbol and no blank space) */
+          <div className="relative w-full h-full flex flex-col justify-between overflow-y-auto overflow-x-hidden pt-2 sm:pt-4 pb-4 px-5 sm:px-6">
             {/* Top Atmospheric Road Backdrop */}
-            <div className="absolute top-0 left-0 right-0 h-72 overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-0 left-0 right-0 h-80 overflow-hidden pointer-events-none z-0">
               <img
                 src={backdropImg}
                 alt="City night background"
@@ -118,30 +118,30 @@ export default function App() {
               onToggleSound={handleToggleSound}
             />
 
-            {/* Hero Badge & Title Area */}
+            {/* Hero 3D Badge & Title Area */}
             <div className="relative z-10 flex flex-col items-center text-center mt-1 sm:mt-2">
-              {/* Elevated Opposing Arrows Icon */}
-              <div className="mb-4 animate-float-slow">
-                <ElevateArrowIcon size="lg" />
+              {/* Massive 3D Elevated Opposing Arrows Icon */}
+              <div className="mb-3 animate-float-slow">
+                <ElevateArrowIcon size="xl" />
               </div>
 
               {/* Category Kicker */}
-              <span className="text-[11px] sm:text-xs font-extrabold tracking-widest text-indigo-300/80 uppercase mb-1">
+              <span className="text-xs font-black tracking-widest text-indigo-300/80 uppercase mb-1">
                 Problem Solving
               </span>
 
               {/* Main Game Title */}
-              <h1 className="text-3xl sm:text-[34px] font-black text-white tracking-tight leading-tight mb-4">
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight mb-3">
                 Arrows direction
               </h1>
 
               {/* Best Score & Rank Stats Row */}
-              <div className="flex items-center justify-center gap-12 sm:gap-16 w-full max-w-xs pb-1">
+              <div className="flex items-center justify-center gap-10 sm:gap-14 w-full max-w-sm pb-1">
                 {/* Best Score */}
-                <div className="flex items-center gap-2.5">
-                  <Trophy className="w-6 h-6 text-indigo-300/70" strokeWidth={1.8} />
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-white/5 border border-white/10 shadow-sm">
+                  <Trophy className="w-6 h-6 text-amber-300" strokeWidth={2} />
                   <div className="text-left">
-                    <span className="text-[10px] font-bold tracking-wider text-indigo-300/70 uppercase block leading-none mb-1">
+                    <span className="text-[10px] font-bold tracking-wider text-indigo-200/70 uppercase block leading-none mb-1">
                       Best Score
                     </span>
                     <span className="text-base sm:text-lg font-bold text-white leading-none tabular-nums">
@@ -151,10 +151,10 @@ export default function App() {
                 </div>
 
                 {/* Rank */}
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-6 h-6 text-indigo-300/70" strokeWidth={1.8} />
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-white/5 border border-white/10 shadow-sm">
+                  <Shield className="w-6 h-6 text-cyan-300" strokeWidth={2} />
                   <div className="text-left">
-                    <span className="text-[10px] font-bold tracking-wider text-indigo-300/70 uppercase block leading-none mb-1">
+                    <span className="text-[10px] font-bold tracking-wider text-indigo-200/70 uppercase block leading-none mb-1">
                       Rank
                     </span>
                     <span className="text-base sm:text-lg font-bold text-white leading-none">
@@ -166,7 +166,7 @@ export default function App() {
             </div>
 
             {/* Middle Section: Difficulty Card + Skills Trained */}
-            <div className="relative z-10 space-y-5 my-4">
+            <div className="relative z-10 space-y-4 my-2">
               <DifficultyCard
                 currentLevel={currentLevel}
                 highestLevelUnlocked={userStats.highestLevelUnlocked}
@@ -176,20 +176,20 @@ export default function App() {
               <SkillsTrained />
             </div>
 
-            {/* Bottom Start Action Button */}
+            {/* Bottom 3D Start Action Button */}
             <div className="relative z-10 pt-2 pb-1">
               <button
                 onClick={() => handleStartGame()}
-                className="w-full h-14 rounded-full bg-gradient-to-r from-[#cbd5e1] via-[#e2e8f0] to-[#cbd5e1] hover:from-white hover:to-slate-200 active:scale-[0.98] text-[#1e1548] font-black text-lg tracking-wide shadow-[0_8px_20px_rgba(0,0,0,0.35),0_0_15px_rgba(255,255,255,0.2)] flex items-center justify-center relative overflow-hidden transition cursor-pointer"
+                className="group relative w-full h-15 rounded-full bg-gradient-to-r from-[#cbd5e1] via-[#f1f5f9] to-[#cbd5e1] hover:from-white hover:to-slate-100 active:translate-y-1 text-[#1e1548] font-black text-xl tracking-wider shadow-[0_8px_0_#94a3b8,0_18px_25px_rgba(0,0,0,0.5)] active:shadow-[0_2px_0_#94a3b8,0_6px_12px_rgba(0,0,0,0.4)] flex items-center justify-center overflow-hidden transition-all cursor-pointer"
               >
                 {/* Subtle glass reflection highlight */}
-                <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
+                <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
 
-                {/* Centered subtle glowing dot just like in the screenshot's Start button */}
-                <div className="flex items-center gap-2 z-10">
+                {/* Centered glowing dot */}
+                <div className="flex items-center gap-2.5 z-10">
                   <span>Start</span>
-                  <div className="w-3.5 h-3.5 rounded-full bg-indigo-500/25 border border-indigo-400/30 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600/70" />
+                  <div className="w-4 h-4 rounded-full bg-indigo-500/25 border-2 border-indigo-400/40 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-indigo-600 shadow-[0_0_6px_#4f46e5]" />
                   </div>
                 </div>
               </button>
